@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+
+  api:
+    build: ./taskq
+    ports:
+      - 8000:8000
+    volumes:
+      - ./taskq:/app
+    command: uvicorn api:app --host 0.0.0.0 --reload
+    depends_on:
+      - rabbitmq
+
+  celery:
+    build: ./taskq/task_queue
+    volumes:
+      - ./taskq/task_queue:/app
+    command: celery -A tasks worker -l INFO
+    depends_on:
+      - api
+      - rabbitmq
+
+  rabbitmq:
+    image: rabbitmq
+
+  dashboard:
+    build: ./taskq/dashboard
+    command: celery --broker=pyamqp://rabbitmq flower
+    ports:
+      - 8001:5555
+    depends_on:
+      - api
+      - celery
+      - rabbitmq
